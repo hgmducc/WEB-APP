@@ -1,20 +1,33 @@
-// WordTable.js - Giao diện responsive tốt hơn trên điện thoại, giữ nguyên logic, ẩn IPA trên mobile, vẫn hiện trên máy tính
+// WordTable.js
+// Hiển thị bảng từ vựng, cho phép lọc theo nhóm, chọn chế độ học (Reading/Listening), và bắt đầu quiz theo nhóm/chế độ
+
 import React, { useEffect, useState } from 'react';
 import { FaVolumeUp } from 'react-icons/fa';
+import ReadingQuiz from './ReadingQuiz';
+import ListeningQuiz from './ListeningQuiz';
 
 export default function WordTable() {
+  // State lưu danh sách từ vựng lấy từ Google Sheet
   const [words, setWords] = useState([]);
+  // Lọc theo nhóm từ
   const [groupFilter, setGroupFilter] = useState('');
+  // Chỉ hiện từ cần ôn (theo stage)
   const [showReviewOnly, setShowReviewOnly] = useState(true);
+  // Chế độ học: reading/listening
+  const [mode, setMode] = useState('');
+  // Hiển thị quiz hay không
+  const [showQuiz, setShowQuiz] = useState(false);
 
+  // Lấy dữ liệu từ Google Sheet khi load component
   useEffect(() => {
     const fetchData = async () => {
       const res = await fetch(
-        'https://docs.google.com/spreadsheets/d/1Ojx3jW6dJfzQyEDP0M3Of9I8KnxVNxsus7PQLL8VP8I/gviz/tq?tqx=out:json&sheet=Từ%20vựng&time=' + new Date().getTime()
+        'https://docs.google.com/spreadsheets/d/1Ojx3jW6dJfzQyEDP0M3Of9I8KnxVNxsus7PQLL8VP8I/gviz/tq?tqx=out:json&sheet=T%E1%BB%AB%20v%E1%BB%B1ng&time=' + new Date().getTime()
       );
       const text = await res.text();
       const json = JSON.parse(text.substr(47).slice(0, -2));
 
+      // Parse từng dòng thành object từ vựng
       const rows = json.table.rows.map(row => {
         const c = row.c;
         return {
@@ -25,8 +38,9 @@ export default function WordTable() {
           synonym: c[5]?.v || '',
           antonym: c[6]?.v || '',
           phrase: c[8]?.v || '',
-          group: c[14]?.v || '',
-          stage: c[9]?.v || ''
+          stage: c[9]?.v || '',
+          audio: c[15]?.v || '', // URL audio nếu có
+          group: c[14]?.v || ''
         };
       });
 
@@ -36,18 +50,21 @@ export default function WordTable() {
     fetchData();
   }, []);
 
+  // Phát âm từ vựng
   const speak = (text) => {
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'en-US';
     speechSynthesis.speak(utter);
   };
 
+  // Lọc từ vựng theo nhóm và trạng thái cần ôn
   const filteredWords = words.filter(w => {
     const matchStage = showReviewOnly ? w.stage.includes('Cần ôn') : true;
     const matchGroup = groupFilter ? w.group === groupFilter : true;
     return matchStage && matchGroup;
   });
 
+  // Lấy danh sách nhóm từ duy nhất
   const uniqueGroups = [...new Set(
     words
       .filter(w => !showReviewOnly || w.stage.includes('Cần ôn'))
@@ -55,13 +72,38 @@ export default function WordTable() {
       .filter(Boolean)
   )];
 
+  // Chọn chế độ học (chỉ chọn 1 trong 2)
+  const handleModeChange = (selectedMode) => {
+    setMode(prev => (prev === selectedMode ? '' : selectedMode));
+  };
+
+  // Bắt đầu quiz theo chế độ đã chọn
+  const handleStudy = () => {
+    if (mode === 'reading') {
+      setShowQuiz(true);
+    } else if (mode === 'listening') {
+      setShowQuiz(true);
+    } else {
+      alert(`Bạn hãy chọn chế độ Reading hoặc Listening trước khi học.`);
+    }
+  };
+
+  // Nếu đang ở chế độ quiz thì render quiz tương ứng
+  if (showQuiz) {
+    return mode === 'reading'
+      ? <ReadingQuiz words={filteredWords} onBack={() => setShowQuiz(false)} />
+      : <ListeningQuiz words={filteredWords} onBack={() => setShowQuiz(false)} />;
+  }
+
   return (
     <div className="p-4">
+      {/* Tiêu đề */}
       <h2 className="text-xl md:text-2xl font-bold mb-4 text-center text-pastel-navy">
         Từ vựng cần ôn <span className="inline-block ml-1">📚</span>
       </h2>
 
-      <div className="flex flex-wrap justify-center items-center gap-4 mb-4">
+      {/* Bộ lọc nhóm từ và trạng thái cần ôn */}
+      <div className="flex flex-wrap justify-center items-center gap-4 mb-2">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -83,6 +125,35 @@ export default function WordTable() {
         </select>
       </div>
 
+      {/* Chọn chế độ học và nút bắt đầu */}
+      <div className="flex flex-wrap justify-center items-center gap-4 mb-4">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={mode === 'listening'}
+            onChange={() => handleModeChange('listening')}
+          />
+          Listening
+        </label>
+
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={mode === 'reading'}
+            onChange={() => handleModeChange('reading')}
+          />
+          Reading
+        </label>
+
+        <button
+          onClick={handleStudy}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow"
+        >
+          Học
+        </button>
+      </div>
+
+      {/* Bảng từ vựng */}
       <div className="overflow-x-auto shadow rounded-xl">
         <table className="w-full table-auto border-collapse rounded-lg overflow-hidden shadow-lg">
           <thead className="bg-gradient-to-r from-yellow-100 to-yellow-300 text-sm md:text-base text-gray-800 font-semibold">
@@ -129,5 +200,3 @@ export default function WordTable() {
     </div>
   );
 }
-// Note: Ensure you have the necessary CSS classes defined for styling, such as pastel-navy, bg-gradient-to-r, etc.
-// This code assumes you have a CSS framework like Tailwind CSS for styling.
