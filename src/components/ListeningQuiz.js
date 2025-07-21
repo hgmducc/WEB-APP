@@ -7,6 +7,7 @@ export default function ListeningQuiz({ words, onBack }) {
   const [answers, setAnswers] = useState({});
   const [score, setScore] = useState(0);
   const [optionsMap, setOptionsMap] = useState({});
+  const [showVietnamese, setShowVietnamese] = useState(false);
 
   useEffect(() => {
     const shuffled = [...words].sort(() => 0.5 - Math.random());
@@ -46,7 +47,6 @@ export default function ListeningQuiz({ words, onBack }) {
     speechSynthesis.speak(utter);
   };
 
-  // Tính điểm tối đa 10 cho toàn bài listening
   const calcScore10 = (rawScore, total) => {
     if (total === 0) return 0;
     return Math.round((rawScore / total) * 10);
@@ -54,7 +54,20 @@ export default function ListeningQuiz({ words, onBack }) {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <h2 className="text-xl font-bold text-center mb-6 text-blue-800">Bài kiểm tra Nghe (Listening)</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-blue-800">Bài kiểm tra Nghe (Listening)</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Hiển thị:</span>
+          <button
+            onClick={() => setShowVietnamese(!showVietnamese)}
+            className={`relative w-12 h-6 flex items-center bg-gray-300 rounded-full p-1 transition-colors duration-300 ${showVietnamese ? 'bg-green-400' : 'bg-gray-300'}`}
+          >
+            <span
+              className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${showVietnamese ? 'translate-x-6' : 'translate-x-0'}`}
+            ></span>
+          </button>
+        </div>
+      </div>
 
       {submitted && (
         <div className="text-green-700 font-semibold text-center mb-6">
@@ -76,12 +89,7 @@ export default function ListeningQuiz({ words, onBack }) {
               <button
                 onClick={() => speak(w.word)}
                 className="text-blue-600 hover:text-blue-800 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 transition w-14 h-14 sm:w-10 sm:h-10"
-                style={{
-                  minWidth: '2.5rem',
-                  minHeight: '2.5rem',
-                  fontSize: '2rem',
-                  lineHeight: 1,
-                }}
+                style={{ minWidth: '2.5rem', minHeight: '2.5rem', fontSize: '2rem', lineHeight: 1 }}
                 aria-label="Nghe phát âm"
               >
                 <Volume2 className="w-8 h-8 sm:w-6 sm:h-6" />
@@ -89,15 +97,18 @@ export default function ListeningQuiz({ words, onBack }) {
             </p>
 
             {fullOptions.map((opt, j) => (
-              <label key={j} className={`block p-2 rounded cursor-pointer border mb-1
-                ${submitted
-                  ? opt.word === w.word
-                    ? 'bg-green-100 border-green-500'
-                    : opt.word === selected
-                    ? 'bg-red-100 border-red-500'
-                    : 'border-gray-300'
-                  : 'hover:bg-gray-50 border-gray-200'}
-              `}>
+              <label
+                key={j}
+                className={`block p-2 rounded cursor-pointer border mb-1
+                  ${submitted
+                    ? opt.word === w.word
+                      ? 'bg-green-100 border-green-500'
+                      : opt.word === selected
+                      ? 'bg-red-100 border-red-500'
+                      : 'border-gray-300'
+                    : 'hover:bg-gray-50 border-gray-200'}
+                `}
+              >
                 <input
                   type="radio"
                   name={`q-${i}`}
@@ -107,7 +118,7 @@ export default function ListeningQuiz({ words, onBack }) {
                   onChange={() => handleChange(w.word, opt.word)}
                   className="mr-2"
                 />
-                {opt.word}
+                {showVietnamese ? opt.meaning : opt.word}
               </label>
             ))}
 
@@ -143,11 +154,9 @@ export default function ListeningQuiz({ words, onBack }) {
         <div className="flex gap-4">
           <button
             onClick={() => {
-              // Reset lại trạng thái để làm lại bài listening, không reload trang
               setSubmitted(false);
               setAnswers({});
               setScore(0);
-              // Xáo lại thứ tự câu hỏi và đáp án
               const shuffled = [...words].sort(() => 0.5 - Math.random());
               const generatedOptions = {};
               shuffled.forEach((w) => {

@@ -7,7 +7,6 @@ export default function ReadingQuiz({ words, onBack }) {
   const [shuffledWords, setShuffledWords] = useState([]);
   const [optionsMap, setOptionsMap] = useState({});
 
-  // Xáo trộn từ và tạo lựa chọn ngẫu nhiên
   useEffect(() => {
     const shuffled = [...words].sort(() => 0.5 - Math.random());
     const allMeanings = words.map(w => w.meaning).filter(Boolean);
@@ -26,6 +25,7 @@ export default function ReadingQuiz({ words, onBack }) {
   };
 
   const handleSubmit = async () => {
+    scrollToTop();
     let total = 0;
     shuffledWords.forEach(w => {
       if (answers[w.word] === w.meaning) total++;
@@ -43,20 +43,23 @@ export default function ReadingQuiz({ words, onBack }) {
     };
 
     try {
-      await fetch('https://script.google.com/macros/s/AKfycbwFYOq6KHukwE_rr-NNFWthfX00SpvQiGOA4heENPnjC_ixU3ZW8ugFmSBcfgB9AH0PzQ/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbwFYOq6KHukwE_rr-NNFWthfX00SpvQiGOA4heENPnjC_ixU3ZW8ugFmSBcfgB9AH0PzQ/exec', {
         method: 'POST',
-       // mode: 'cors', // Google Script không cho phản hồi
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         },
-        body: JSON.stringify(payload),
+        body: `payload=${encodeURIComponent(JSON.stringify(payload))}`,
       });
+
+      const text = await response.text();
+      console.log('Server response:', text);
     } catch (error) {
       console.error('Gửi kết quả thất bại:', error);
     }
   };
 
   const handleRetry = () => {
+    scrollToTop();
     setSubmitted(false);
     setAnswers({});
     setScore(0);
@@ -72,9 +75,18 @@ export default function ReadingQuiz({ words, onBack }) {
     setOptionsMap(opts);
   };
 
+  const handleBack = () => {
+    scrollToTop();
+    onBack();
+  };
+
   const calcScore10 = (rawScore, total) => {
     if (total === 0) return 0;
     return Math.round((rawScore / total) * 10);
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -169,7 +181,7 @@ export default function ReadingQuiz({ words, onBack }) {
             Làm lại
           </button>
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="mt-4 bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded"
           >
             Quay lại
